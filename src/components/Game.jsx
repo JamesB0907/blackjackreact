@@ -1,60 +1,70 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 const Game = () => {
     const [deck, setDeck] = useState([]);
     const [playerHand, setPlayerHand] = useState([]);
     const [dealerHand, setDealerHand] = useState([]);
     const [playerTurn, setPlayerTurn] = useState(true);
-    const [gameResult, setGameResult] = useState('');
-    // const [gameStatus, setGameStatus] = useState('not started');
+    const [gameResult, setGameResult] = useState("");
+    const [dealerDrawing, setDealerDrawing] = useState(false);
 
     const initializeDeck = () => {
-        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-        const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        const suits = ["hearts", "diamonds", "clubs", "spades"];
+        const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
         const newDeck = [];
-        suits.forEach(suit => {
-            values.forEach(value => {
-                newDeck.push({ suit, value})
+        suits.forEach((suit) => {
+            values.forEach((value) => {
+                newDeck.push({ suit, value });
             });
         });
         for (let i = newDeck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+            [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
         }
-        setDeck(newDeck)
-    }
+        setDeck(newDeck);
+    };
 
     const dealCards = () => {
-        const updatedDeck = [...deck]
-        const newPlayerHand = [updatedDeck.pop(), updatedDeck.pop()];
-        const newDealerHand = [updatedDeck.pop(), updatedDeck.pop()];
-        setDeck(updatedDeck)
-        setPlayerHand(newPlayerHand);
-        setDealerHand(newDealerHand);
-    }
+        setDeck(prevDeck => {
+            const updatedDeck = [...prevDeck];
+            const newPlayerHand = [updatedDeck.pop(), updatedDeck.pop()];
+            const newDealerHand = [updatedDeck.pop(), updatedDeck.pop()];
+
+            setPlayerHand(newPlayerHand);
+            setDealerHand(newDealerHand);
+
+            return updatedDeck;
+        });
+    };
 
     const startGame = () => {
-        initializeDeck();
-        setTimeout(() => {
-            if (deck.length > 0) {
-                dealCards()
-            }
-        }, 100)
-        setPlayerTurn(true);
+        setPlayerHand([]);
+        setDealerHand([]);
         setGameResult('');
-    }
+        setPlayerTurn(true);
+        setDealerDrawing(false);
+        initializeDeck();
+    };
+
+    useEffect(() => {
+        if (deck.length === 52) {
+            dealCards();
+        }
+    }, [deck]);
 
     const calculateHandValue = (hand) => {
         let value = 0;
         let aceCount = 0;
-        hand.forEach(card => {
-            if (['J', 'Q', 'K'].includes(card.value)) {
+        hand.forEach((card) => {
+            if (!card) return;
+
+            if (["J", "Q", "K"].includes(card.value)) {
                 value += 10;
-            } else if (card.value === 'A') {
+            } else if (card.value === "A") {
                 aceCount += 1;
                 value += 11;
             } else {
-                value += parseInt(card.value)
+                value += parseInt(card.value);
             }
         });
         while (value > 21 && aceCount > 0) {
@@ -62,49 +72,80 @@ const Game = () => {
             aceCount -= 1;
         }
         return value;
-    }
+    };
 
     const playerHit = () => {
         if (playerTurn) {
             const updatedDeck = [...deck];
-            const newPlayerHand = [...playerHand, updatedDeck.pop()]
+            const newPlayerHand = [...playerHand, updatedDeck.pop()];
             setDeck(updatedDeck);
             setPlayerHand(newPlayerHand);
             if (calculateHandValue(newPlayerHand) > 21) {
-                setGameResult('Player Bust! Dealer wins!');
+                setGameResult("Player Bust! Dealer wins!");
                 setPlayerTurn(false);
             }
         }
-    }
+    };
 
     const playerStand = () => {
         setPlayerTurn(false);
         dealerTurn();
-    }
-
-    const dealerTurn = () => {
-        let dealerHandValue = calculateHandValue(dealerHand);
-        while (dealerHandValue < 17) {
-            const updatedDeck = [...deck];
-            const newDealerHand = [...dealerHand, updatedDeck.pop()]
-            setDeck(updatedDeck);
-            setDealerHand(newDealerHand);
-            dealerHandValue = calculateHandValue(newDealerHand);
-        }
-        determineWinner();
     };
+
+    // const dealerTurn = () => {
+    //     let dealerHandValue = calculateHandValue(dealerHand);
+    //     while (dealerHandValue < 17) {
+    //         const updatedDeck = [...deck];
+    //         const newDealerHand = [...dealerHand, updatedDeck.pop()]
+    //         setDeck(updatedDeck);
+    //         setDealerHand(newDealerHand);
+    //         dealerHandValue = calculateHandValue(newDealerHand);
+    //     }
+    //     determineWinner();
+    // };
+
+    useEffect(() => {
+        if (dealerDrawing) {
+            const dealerValue = calculateHandValue(dealerHand);
+
+            if (dealerValue < 17) {
+                const drawDealerCard = setTimeout(() => {
+                    setDeck((prevDeck) => {
+                        if (prevDeck.length === 0) {
+                            setGameResult(
+                                "Deck is empty! Game cannot continue."
+                            );
+                            setDealerDrawing(false);
+                            return prevDeck;
+                        }
+                        const updatedDeck = [...prevDeck];
+                        const card = updatedDeck.pop();
+
+                        setDealerHand((prevHand) => [...prevHand, card]);
+
+                        return updatedDeck;
+                    });
+                }, 500);
+
+                return () => clearTimeout(drawDealerCard);
+            } else {
+                setDealerDrawing(false);
+                determineWinner();
+            }
+        }
+    }, [dealerHand, dealerDrawing]);
 
     const determineWinner = () => {
         const playerHandValue = calculateHandValue(playerHand);
         const dealerHandValue = calculateHandValue(dealerHand);
         if (dealerHandValue > 21) {
-            setGameResult('Dealer Busts! Player Wins!');
+            setGameResult("Dealer Busts! Player Wins!");
         } else if (playerHandValue > dealerHandValue) {
-            setGameResult('Player Wins!');
+            setGameResult("Player Wins!");
         } else if (playerHandValue < dealerHandValue) {
-            setGameResult('Dealer Wins!')
+            setGameResult("Dealer Wins!");
         } else {
-            setGameResult('It\'s a Tie!')
+            setGameResult("It's a Tie!");
         }
     };
 
@@ -114,15 +155,23 @@ const Game = () => {
             <div>
                 <h2>Player's Hand</h2>
                 {playerHand.map((card, index) => (
-                    <div key={index}>{card.value} of {card.suit}</div>
+                    <div key={index}>
+                        {card.value} of {card.suit}
+                    </div>
                 ))}
-                <button onClick={playerHit} disabled={!playerTurn}>Hit</button>
-                <button onClick={playerStand} disabled={!playerTurn}>Stand</button>
+                <button onClick={playerHit} disabled={!playerTurn}>
+                    Hit
+                </button>
+                <button onClick={playerStand} disabled={!playerTurn}>
+                    Stand
+                </button>
             </div>
             <div>
                 <h2>Dealer's Hand</h2>
                 {dealerHand.map((card, index) => (
-                    <div key={index}>{card.value} of {card.suit}</div>
+                    <div key={index}>
+                        {card.value} of {card.suit}
+                    </div>
                 ))}
             </div>
             {gameResult && <h2>{gameResult}</h2>}
