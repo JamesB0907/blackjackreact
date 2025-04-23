@@ -25,7 +25,7 @@ const Game = () => {
     };
 
     const dealCards = () => {
-        setDeck(prevDeck => {
+        setDeck((prevDeck) => {
             const updatedDeck = [...prevDeck];
             const newPlayerHand = [updatedDeck.pop(), updatedDeck.pop()];
             const newDealerHand = [updatedDeck.pop(), updatedDeck.pop()];
@@ -40,7 +40,7 @@ const Game = () => {
     const startGame = () => {
         setPlayerHand([]);
         setDealerHand([]);
-        setGameResult('');
+        setGameResult("");
         setPlayerTurn(true);
         setDealerDrawing(false);
         initializeDeck();
@@ -76,22 +76,31 @@ const Game = () => {
 
     const playerHit = () => {
         if (playerTurn) {
-            const updatedDeck = [...deck];
-            const newPlayerHand = [...playerHand, updatedDeck.pop()];
-            setDeck(updatedDeck);
-            setPlayerHand(newPlayerHand);
-            if (calculateHandValue(newPlayerHand) > 21) {
-                setGameResult("Player Bust! Dealer wins!");
-                setPlayerTurn(false);
-            }
+            setDeck(prevDeck => {
+                const updatedDeck = [...prevDeck];
+                const card = updatedDeck.pop();
+
+                setPlayerHand((prevHand) => {
+                    const newHand = [...prevHand, card];
+
+                    if (calculateHandValue(newHand) > 21) {
+                        setGameResult("Player Bust! Dealer wins!");
+                        setPlayerTurn(false);
+                    }
+
+                    return newHand;
+                });
+                return updatedDeck;
+            });
         }
     };
 
     const playerStand = () => {
         setPlayerTurn(false);
-        dealerTurn();
+        setDealerDrawing(true);
     };
 
+    // [REMOVED] The synchronous version of dealerTurn function
     // const dealerTurn = () => {
     //     let dealerHandValue = calculateHandValue(dealerHand);
     //     while (dealerHandValue < 17) {
