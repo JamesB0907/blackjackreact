@@ -10,7 +10,21 @@ const Game = () => {
 
     const initializeDeck = () => {
         const suits = ["hearts", "diamonds", "clubs", "spades"];
-        const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+        const values = [
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "J",
+            "Q",
+            "K",
+            "A",
+        ];
         const newDeck = [];
         suits.forEach((suit) => {
             values.forEach((value) => {
@@ -21,9 +35,9 @@ const Game = () => {
             const j = Math.floor(Math.random() * (i + 1));
             [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
         }
-        setDeck(newDeck);
+        return newDeck;
     };
-
+    /*
     const dealCards = () => {
         setDeck((prevDeck) => {
             const updatedDeck = [...prevDeck];
@@ -36,21 +50,30 @@ const Game = () => {
             return updatedDeck;
         });
     };
-
+*/
     const startGame = () => {
         setPlayerHand([]);
         setDealerHand([]);
         setGameResult("");
         setPlayerTurn(true);
         setDealerDrawing(false);
-        initializeDeck();
+
+        const newDeck = initializeDeck();
+        const newPlayerHand = [newDeck.pop(), newDeck.pop()];
+        const newDealerHand = [newDeck.pop(), newDeck.pop()];
+
+        setPlayerHand(newPlayerHand);
+        setDealerHand(newDealerHand);
+        setDeck(newDeck);
     };
 
+    /*
     useEffect(() => {
         if (deck.length === 52) {
             dealCards();
         }
     }, [deck]);
+*/
 
     const calculateHandValue = (hand) => {
         let value = 0;
@@ -73,7 +96,7 @@ const Game = () => {
         }
         return value;
     };
-
+    /*
     const playerHit = () => {
         if (playerTurn) {
             setDeck(prevDeck => {
@@ -92,6 +115,29 @@ const Game = () => {
                 });
                 return updatedDeck;
             });
+        }
+    };
+*/
+
+    const playerHit = () => {
+        if (!playerTurn || deck.length === 0) return;
+
+        const updatedDeck = [...deck];
+        const card = updatedDeck.pop();
+
+        if (!card) {
+            setGameResult("Deck is empty! Game cannot continue.");
+            return;
+        }
+
+        const newPlayerHand = [...playerHand, card];
+        setPlayerHand(newPlayerHand);
+        setDeck(updatedDeck);
+
+        const handValue = calculateHandValue(newPlayerHand);
+        if (handValue > 21) {
+            setGameResult("Player Bust! Dealer win!");
+            setPlayerTurn(false);
         }
     };
 
@@ -119,21 +165,23 @@ const Game = () => {
 
             if (dealerValue < 17) {
                 const drawDealerCard = setTimeout(() => {
-                    setDeck((prevDeck) => {
-                        if (prevDeck.length === 0) {
-                            setGameResult(
-                                "Deck is empty! Game cannot continue."
-                            );
-                            setDealerDrawing(false);
-                            return prevDeck;
-                        }
-                        const updatedDeck = [...prevDeck];
-                        const card = updatedDeck.pop();
+                    if (deck.length === 0) {
+                        setGameResult("Deck is empty! Game cannot continue.");
+                        setDealerDrawing(false);
+                    }
 
-                        setDealerHand((prevHand) => [...prevHand, card]);
+                    const updatedDeck = [...deck];
+                    const card = updatedDeck.pop();
+                    const newDealerHand = [...dealerHand, card];
 
-                        return updatedDeck;
-                    });
+                    setDealerHand(newDealerHand);
+                    setDeck(updatedDeck);
+
+                    const newHandValue = calculateHandValue(newDealerHand);
+                    if (newHandValue > 21) {
+                        setGameResult("Dealer Busts! Player Wins!");
+                        setDealerDrawing(false);
+                    }
                 }, 500);
 
                 return () => clearTimeout(drawDealerCard);
@@ -142,7 +190,7 @@ const Game = () => {
                 determineWinner();
             }
         }
-    }, [dealerHand, dealerDrawing]);
+    }, [dealerHand, dealerDrawing, deck]);
 
     const determineWinner = () => {
         const playerHandValue = calculateHandValue(playerHand);
@@ -158,32 +206,151 @@ const Game = () => {
         }
     };
 
+    const displayCard = (card) => {
+        if (!card) return null;
+
+        const suitSymbols = {
+            hearts: "♥",
+            diamonds: "♦",
+            clubs: "♣",
+            spades: "♠",
+        };
+
+        const color =
+            card.suit === "hearts" || card.suit === "diamonds"
+                ? "red"
+                : "black";
+
+        return (
+            <span style={{ color, marginRight: "10px", fontSize: "18px" }}>
+                {card.value} {suitSymbols[card.suit]}
+            </span>
+        );
+    };
+
     return (
-        <div>
-            <button onClick={startGame}>Start Game</button>
-            <div>
-                <h2>Player's Hand</h2>
-                {playerHand.map((card, index) => (
-                    <div key={index}>
-                        {card.value} of {card.suit}
-                    </div>
-                ))}
-                <button onClick={playerHit} disabled={!playerTurn}>
+        <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+            <h1>Blackjack</h1>
+
+            {/* CHANGED: Added styling to button */}
+            <button
+                onClick={startGame}
+                style={{
+                    padding: "10px 20px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    marginBottom: "20px",
+                }}
+            >
+                Start New Game
+            </button>
+
+            <div style={{ marginBottom: "20px" }}>
+                {/* ADDED: Display hand value */}
+                <h2>Player's Hand ({calculateHandValue(playerHand)})</h2>
+                {/* CHANGED: Enhanced card display */}
+                <div
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        marginBottom: "10px",
+                    }}
+                >
+                    {playerHand.map((card, index) => (
+                        <div
+                            key={index}
+                            style={{
+                                border: "1px solid #ddd",
+                                borderRadius: "5px",
+                                padding: "10px",
+                                margin: "5px",
+                                minWidth: "50px",
+                                textAlign: "center",
+                            }}
+                        >
+                            {displayCard(card)}
+                        </div>
+                    ))}
+                </div>
+                {/* CHANGED: Added styling to buttons */}
+                <button
+                    onClick={playerHit}
+                    disabled={!playerTurn}
+                    style={{
+                        padding: "8px 16px",
+                        backgroundColor: playerTurn ? "#2196F3" : "#ccc",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: playerTurn ? "pointer" : "not-allowed",
+                        marginRight: "10px",
+                    }}
+                >
                     Hit
                 </button>
-                <button onClick={playerStand} disabled={!playerTurn}>
+                <button
+                    onClick={playerStand}
+                    disabled={!playerTurn}
+                    style={{
+                        padding: "8px 16px",
+                        backgroundColor: playerTurn ? "#FF9800" : "#ccc",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: playerTurn ? "pointer" : "not-allowed",
+                    }}
+                >
                     Stand
                 </button>
             </div>
+
             <div>
-                <h2>Dealer's Hand</h2>
-                {dealerHand.map((card, index) => (
-                    <div key={index}>
-                        {card.value} of {card.suit}
-                    </div>
-                ))}
+                {/* ADDED: Display hand value */}
+                <h2>Dealer's Hand ({calculateHandValue(dealerHand)})</h2>
+                {/* CHANGED: Enhanced card display */}
+                <div style={{ display: "flex", flexWrap: "wrap" }}>
+                    {dealerHand.map((card, index) => (
+                        <div
+                            key={index}
+                            style={{
+                                border: "1px solid #ddd",
+                                borderRadius: "5px",
+                                padding: "10px",
+                                margin: "5px",
+                                minWidth: "50px",
+                                textAlign: "center",
+                            }}
+                        >
+                            {displayCard(card)}
+                        </div>
+                    ))}
+                </div>
             </div>
-            {gameResult && <h2>{gameResult}</h2>}
+
+            {/* CHANGED: Enhanced game result display */}
+            {gameResult && (
+                <div
+                    style={{
+                        marginTop: "20px",
+                        padding: "15px",
+                        backgroundColor: "#f0f0f0",
+                        borderRadius: "5px",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        fontSize: "20px",
+                    }}
+                >
+                    {gameResult}
+                </div>
+            )}
+
+            {/* ADDED: Display remaining cards count */}
+            <div style={{ marginTop: "20px", fontSize: "14px", color: "#666" }}>
+                Cards remaining in deck: {deck.length}
+            </div>
         </div>
     );
 };
